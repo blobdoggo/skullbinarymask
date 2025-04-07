@@ -42,7 +42,7 @@ if not image_files:
 
 for filename in image_files:
     input_path = os.path.join(INPUT_FOLDER, filename)
-    output_mask_path = os.path.join(OUTPUT_FOLDER, f"{os.path.splitext(filename)[0]}_mask.png")
+    output_mask_path = os.path.join(OUTPUT_FOLDER, f"{os.path.splitext(filename)[0]}_mask.jpg")
 
     try:
         input_tensor = preprocess(input_path, img_transform).to(DEVICE)
