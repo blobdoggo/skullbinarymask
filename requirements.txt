@@ -1,0 +1,8 @@
+torch
+torchvision
+pillow
+opencv-python
+tqdm
+matplotlib
+torchaudio
+tensorflow
