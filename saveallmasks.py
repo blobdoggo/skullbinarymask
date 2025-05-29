@@ -9,9 +9,9 @@ import cv2
 from unettorchnosplit import UNetKerasStyle, img_transform
 
 # ==== Config ====
-MODEL_SAVE_PATH = 'unet_pytorch_split_model.pth'
+MODEL_SAVE_PATH = 'unet_pytorch_split_model2.pth'
 INPUT_FOLDER = 'H:/dataset/Test1'
-OUTPUT_FOLDER = 'C:/Users/rushi/dataset/Test1Masks'
+OUTPUT_FOLDER = 'H:/dataset/Test1Masks'
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ==== Create output directory if it doesn't exist ====
