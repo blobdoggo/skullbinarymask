@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#I'm not a big coding guy so I'm gonna explain this using terrible metaphors and analogies yippee :3
 
 import torch
 import torch.nn as nn
@@ -12,26 +12,24 @@ import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import random
-import multiprocessing # Import multiprocessing
+import multiprocessing
 
-# --- Configuration ---
+# Config
 IMG_SIZE = (256, 256)
 BATCH_SIZE = 2
-EPOCHS = 6
+EPOCHS = 5
 LEARNING_RATE = 1e-4
-MODEL_SAVE_PATH = 'unet_pytorch_split_model.pth'
-VALIDATION_SPLIT = 0.2 # Use 20% of the data for validation
+MODEL_SAVE_PATH = 'unet_pytorch_split_model2.pth'
+VALIDATION_SPLIT = 0.1 # Use 10% of the data for validation
 RANDOM_SEED = 42 # For reproducible splits
 
-# --- Data Paths (Single Source) ---
-DATA_DIR = "C:/Users/rushi/dataset" # Adjust if needed
-ALL_IMG_DIR = os.path.join(DATA_DIR, "train/images") # CHANGE THIS to your single image folder
-ALL_MASK_DIR = os.path.join(DATA_DIR, "train/masks") # CHANGE THIS to your single mask folder
+# All paths for images and groundtruthmasks
+photo_dir = "H:/dataset" # Adjust if needed
+all_photos = os.path.join(photo_dir, "train/images") 
+all_masks = os.path.join(photo_dir, "train/masks")
 
-# --- Ensure Prediction Image Path is Set Correctly ---
-# Make sure this image exists within your ALL_IMG_DIR
-# Using the uppercase version as it likely exists in the image folder
-PREDICT_IMG_PATH = os.path.join(ALL_IMG_DIR, "DSC00117.jpg") # Example, change to a real image name
+#Taking out a single picture to test model prediction
+PREDICT_IMG_PATH = os.path.join(all_photos, "DSC00117.jpg") # Example, change to a real image name
 
 # Set random seed for reproducibility
 random.seed(RANDOM_SEED)
@@ -41,7 +39,7 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(RANDOM_SEED)
 
 
-# --- Device Setup ---
+#Device timeeeee this checks if you got a useful GPU and like CUDA set up right
 if torch.cuda.is_available():
     device = torch.device("cuda")
     print(f"CUDA available. Using GPU: {torch.cuda.get_device_name(0)}")
@@ -51,61 +49,56 @@ else:
     print("CUDA not available. Using CPU.")
 
 
-# --- Dataset Definition ---
+#Segmenting the dataset into training and validation
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, img_transform, mask_transform):
+    def __init__(self, image_dir, mask_dir, img_transform, mask_transform): #initialize variables
         self.image_dir = image_dir
         self.mask_dir = mask_dir
         self.img_transform = img_transform
         self.mask_transform = mask_transform
 
         if not os.path.exists(image_dir) or not os.path.exists(mask_dir):
-             raise FileNotFoundError(f"Image directory '{image_dir}' or mask directory '{mask_dir}' not found.")
+             raise FileNotFoundError(f"Image directory '{image_dir}' or mask directory '{mask_dir}' not found.") #Checking if image and mask dirs are legit
 
         # Store full paths directly or keep filenames and join later
-        self.image_filenames = sorted([f for f in os.listdir(image_dir) if os.path.isfile(os.path.join(image_dir, f))])
-        self.mask_filenames = sorted([f for f in os.listdir(mask_dir) if os.path.isfile(os.path.join(mask_dir, f))])
+        self.image_filenames = sorted([f for f in os.listdir(image_dir) if os.path.isfile(os.path.join(image_dir, f))]) #storing the path to a single file.
+        self.mask_filenames = sorted([f for f in os.listdir(mask_dir) if os.path.isfile(os.path.join(mask_dir, f))])  #storing the path to an equivalent mask.
 
         if not self.image_filenames:
-            print(f"Warning: No image files found in {image_dir}")
+            print(f"Warning: No image files found in {image_dir}") #if the file you lookin for isnt there
         if not self.mask_filenames:
-             print(f"Warning: No mask files found in {mask_dir}")
+             print(f"Warning: No mask files found in {mask_dir}") #if the mask you're lookin for isnt there
 
         if len(self.image_filenames) != len(self.mask_filenames):
             print(f"Warning: Number of images ({len(self.image_filenames)}) and masks ({len(self.mask_filenames)}) do not match.")
-            # Decide how critical this is - maybe proceed or raise error depending on use case
-            # raise ValueError("Number of images and masks must match for reliable pairing.")
-
-        # Build a mapping from image basename (lowercase) to mask filename
-        # This is more robust than relying on sorted lists when names don't match exactly
+            #Tells you if the number of imaages and masks are not the same (oh no)
+       # Redundancy time :D it'll extract the name of your masks without the '_mask' and check if each image has a mask to take to prom.
         self.mask_map = {}
         for mask_fname in self.mask_filenames:
-            mask_basename = os.path.splitext(mask_fname)[0]
-            # Store mask filename associated with its lowercase basename (without suffix if needed)
-            # Handle potential "_mask" suffix variations case-insensitively
+            mask_basename = os.path.splitext(mask_fname)[0] # 
             processed_basename = mask_basename.lower()
             if processed_basename.endswith("_mask"):
                  processed_basename = processed_basename[:-5] # Remove "_mask"
-            self.mask_map[processed_basename] = mask_fname # map 'dsc...' -> 'dsc..._mask.png'
+            self.mask_map[processed_basename] = mask_fname # images send out RSVPs to the masks to map to each other, each image is bonded to a mask forever <3
 
-        # Verification (optional but recommended)
-        num_matched = 0
+        # REDUDNDANCY SQUARED YIPPEEE
+        matches_made = 0
         unmatched_images = []
         for img_fname in self.image_filenames:
             img_basename_lower = os.path.splitext(img_fname)[0].lower()
             if img_basename_lower in self.mask_map:
-                num_matched += 1
+                matches_made += 1
             else:
-                unmatched_images.append(img_fname)
+                unmatched_images.append(img_fname) #Tells you which images have no date if there are any :3
 
-        print(f"Dataset Verification: Found {len(self.image_filenames)} images and {len(self.mask_filenames)} masks.")
-        print(f"Successfully matched {num_matched} image-mask pairs based on case-insensitive basename.")
+        print(f"Dataset Verification: Found {len(self.image_filenames)} images and {len(self.mask_filenames)} masks.") #Tells you how many images and how many masks. Check for thumbs.db if you can't fimd the extra file anywhere.
+        print(f"Successfully matched {matches_made} image-mask pairs based on case-insensitive basename.") #number of successful image-mask prom dates :3
         if unmatched_images:
              print(f"Warning: Could not find corresponding masks for {len(unmatched_images)} images:")
-             # Print first few unmatched for debugging
+             # tells you which images didn't get dates to prom:(
              print(unmatched_images[:10])
-             # Depending on severity, you might want to raise an error here
-             # raise ValueError("Could not match all images to masks.")
+             # prints the first 10 images that didn't get dates.
+             
 
 
     def __len__(self):
@@ -115,24 +108,24 @@ class SegmentationDataset(Dataset):
 
     def __getitem__(self, idx):
         if idx >= len(self.image_filenames):
-            raise IndexError(f"Index {idx} out of bounds for dataset with length {len(self.image_filenames)}")
+            raise IndexError(f"Index {idx} out of bounds for dataset with length {len(self.image_filenames)}") #Check if the index is out of bounds
 
-        img_name = self.image_filenames[idx]
+        img_name = self.image_filenames[idx] #gimme the current filename for the loop
         img_path = os.path.join(self.image_dir, img_name)
 
-        # Find corresponding mask using the pre-built map
+        # Find corresponding mask using thhe prom date RSVP map <3
         img_basename_lower = os.path.splitext(img_name)[0].lower()
 
         if img_basename_lower in self.mask_map:
             mask_name = self.mask_map[img_basename_lower]
             mask_path = os.path.join(self.mask_dir, mask_name)
         else:
-            # Handle case where no mask was found during init verification
+            # Tells you which images are LONER LOSERS and have no date to prom :O (hehe no hate I promise)
             raise FileNotFoundError(f"Internal Error: Could not find corresponding mask for image {img_name} (basename: {img_basename_lower}) in pre-built map. Check init verification.")
 
         try:
-            image = Image.open(img_path).convert("RGB")
-            mask = Image.open(mask_path).convert("L")
+            image = Image.open(img_path).convert("RGB") # change from picture to lotta number
+            mask = Image.open(mask_path).convert("L") # change from mask to lotta number
         except FileNotFoundError as e:
              print(f"Error opening file during getitem: {e}")
              raise e
@@ -140,13 +133,13 @@ class SegmentationDataset(Dataset):
              print(f"Error processing image {img_path} or mask {mask_path}: {e}")
              raise e
 
-        # Apply transforms
-        image = self.img_transform(image)
-        mask = self.mask_transform(mask)
+        #Autobotss let's roll out! Transform the image and mask to the right size and format for the model to eat :3
+        image = self.img_transform(image) # change the image to an abstract blob that the model can eat
+        mask = self.mask_transform(mask) # change the mask to an abstract blob that the model can eat
 
         return image, mask
 
-# --- Transforms (No changes needed) ---
+# TRANSFORMERS, Robots in disguise! (Transformations for the images and masks)
 img_transform = transforms.Compose([
     transforms.Resize(IMG_SIZE, interpolation=transforms.InterpolationMode.BILINEAR),
     transforms.ToImage(),
@@ -160,12 +153,11 @@ mask_transform = transforms.Compose([
     transforms.ToDtype(torch.float32, scale=True),
 ])
 
-# --- U-Net Model Definition (UNetKerasStyle) ---
-# (Model definition code remains the same - place it here)
+# HERE'S U-NET
 class UNetKerasStyle(nn.Module):
     def __init__(self, input_channels=3, output_channels=1):
         super().__init__()
-        # Encoder
+        # Encoder (2 convolution layers and ppol baby) I did it twice and it took like 9 gigs of ram?? up to 3 if you got like 32 gigs. I don't know if the model breaks at 4.
         self.conv1_1 = nn.Conv2d(input_channels, 64, kernel_size=3, padding=1)
         self.relu1_1 = nn.ReLU(inplace=True)
         self.conv1_2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
@@ -214,23 +206,21 @@ class UNetKerasStyle(nn.Module):
         return self.output_activation(output)
 
 
-# ==============================================================================
-# Main execution block - REQUIRED for multiprocessing on Windows
-# ==============================================================================
+# --- Main Script ---
 if __name__ == '__main__':
     # Fix for multiprocessing spawn error on Windows
     multiprocessing.freeze_support()
 
     # --- Create Full Dataset ---
     try:
-        full_dataset = SegmentationDataset(ALL_IMG_DIR, ALL_MASK_DIR, img_transform, mask_transform)
+        full_dataset = SegmentationDataset(all_photos, all_masks, img_transform, mask_transform)
         print(f"Successfully initialized dataset handler. Total images found: {len(full_dataset)}")
         if len(full_dataset) == 0:
             print("Error: Dataset is empty or no matches found. Check image/mask paths and contents.")
             exit()
     except (FileNotFoundError, ValueError, IndexError) as e:
         print(f"Error initializing dataset: {e}")
-        print("Please check your ALL_IMG_DIR and ALL_MASK_DIR paths and ensure they contain corresponding image and mask files.")
+        print("Please check your all_photos and all_masks paths and ensure they contain corresponding image and mask files.")
         exit()
 
     # --- Split Dataset ---
