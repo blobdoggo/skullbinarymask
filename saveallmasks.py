@@ -8,24 +8,6 @@ from PIL import Image
 import cv2
 from unettorchnosplit import UNetKerasStyle, img_transform
 
-# ==== Config ====
-MODEL_SAVE_PATH = 'unet_pytorch_split_model2.pth'
-INPUT_FOLDER = 'H:/dataset/Test1'
-OUTPUT_FOLDER = 'H:/dataset/Test1Masks'
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# ==== Create output directory if it doesn't exist ====
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-
-# ==== Load Model ====
-model_pred = UNetKerasStyle(input_channels=3, output_channels=1).to(DEVICE)
-if os.path.exists(MODEL_SAVE_PATH):
-    model_pred.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
-    model_pred.eval()
-else:
-    print(f"Error: Model file not found at {MODEL_SAVE_PATH}. Cannot run prediction.")
-    exit()
-
 # ==== Preprocess ====
 def preprocess(image_path, transform):
     img = Image.open(image_path).convert("RGB")
@@ -33,38 +15,28 @@ def preprocess(image_path, transform):
     img = img.unsqueeze(0)
     return img
 
-# ==== Loop through all images ====
-image_files = [f for f in os.listdir(INPUT_FOLDER) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-
-if not image_files:
-    print(f"No images found in {INPUT_FOLDER}")
-    exit()
-
-for filename in image_files:
-    input_path = os.path.join(INPUT_FOLDER, filename)
-    output_mask_path = os.path.join(OUTPUT_FOLDER, f"{os.path.splitext(filename)[0]}_mask.jpg")
-
-    try:
-        input_tensor = preprocess(input_path, img_transform).to(DEVICE)
-    except Exception as e:
-        print(f"Skipping {filename}: {e}")
-        continue
+def process_single_image(filename, input_folder, output_folder, model, device):
+    image_path = os.path.join(input_folder, filename)
+    img = preprocess(image_path, img_transform).to(device)
 
     with torch.no_grad():
-        predicted_mask_tensor = model_pred(input_tensor)
+        output = model(img)
+        output = torch.sigmoid(output)
+        output = (output > 0.5).float()  # Binarize the output
 
-    predicted_mask = predicted_mask_tensor.squeeze().cpu().numpy()
+    # Convert to numpy and save
+    output_np = output.squeeze().cpu().numpy()
+    output_np = (output_np * 255).astype(np.uint8)  # Scale to [0, 255]
     
-    # Load original image size to match mask to it
-    original_image = Image.open(input_path)
-    original_size = original_image.size  # (width, height)
+    # Save the mask
+    mask_filename = os.path.splitext(filename)[0] + '_mask.png'
+    mask_path = os.path.join(output_folder, mask_filename)
+    cv2.imwrite(mask_path, output_np)
 
-    # Resize prediction to original size
-    predicted_mask_resized = cv2.resize(predicted_mask, original_size, interpolation=cv2.INTER_LINEAR)
-    predicted_mask_binary = (predicted_mask_resized > 0.5).astype(np.uint8) * 255
+    print(f"Processed {filename} -> {mask_filename}")
 
-    # Save binary mask
-    cv2.imwrite(output_mask_path, predicted_mask_binary)
-    print(f"Saved mask for {filename} to {output_mask_path}")
+def process_images(image_files, input_folder, output_folder, model, device):
+    for filename in image_files:
+        process_single_image(filename, input_folder, output_folder, model, device)
+    print("\nBatch prediction complete.")
 
-print("\nBatch prediction complete.")
