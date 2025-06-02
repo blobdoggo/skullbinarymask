@@ -5,11 +5,14 @@ from saveallmasks import process_images
 import torch
 from unettorchnosplit import UNetKerasStyle
 
+MODEL_SAVE_PATH = 'skull_model.pth'
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 input_folder = 'dataset/input'
 output_folder = 'dataset/output'
 
 def setup_environment():
     # Placeholder for any environment setup (e.g., logging, seeds)
+        # ==== Config ====
     pass
 
 def parse_args():
@@ -28,7 +31,7 @@ def ensure_folder(path, create_if_not_exists=True):
             print(f"Error: The specified path does not exist: {path}")
             sys.exit(1)
 
-def main():
+def process_args():
     global input_folder
     global output_folder
 
@@ -47,19 +50,8 @@ def main():
 
     # Main program logic goes here
 
-if __name__ == "__main__":
-    main()
-
-    # ==== Config ====
-    MODEL_SAVE_PATH = 'skull_model.pth'
-    #INPUT_FOLDER = 'H:/dataset/Test1'
-    #OUTPUT_FOLDER = 'H:/dataset/Test1Masks'
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # ==== Create output directory if it doesn't exist ====
-    os.makedirs(output_folder, exist_ok=True)
-
-    # ==== Load Model ====
+def load_model():
+        # ==== Load Model ====
     model_pred = UNetKerasStyle(input_channels=3, output_channels=1).to(DEVICE)
     if os.path.exists(MODEL_SAVE_PATH):
         model_pred.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
@@ -69,8 +61,10 @@ if __name__ == "__main__":
         exit()
 
 
+    return model_pred
 
-
+def process_data(input_folder, output_folder):
+    model_pred = load_model()
     # ==== Loop through all images ====
     image_files = [f for f in os.listdir(input_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
@@ -88,3 +82,8 @@ if __name__ == "__main__":
         model=model_pred,
         device=DEVICE
     )
+
+if __name__ == "__main__":
+    process_args()   
+    process_data(input_folder, output_folder)
+
