@@ -1,0 +1,23 @@
+.app {
+  font-family: sans-serif;
+  padding: 2rem;
+  text-align: center;
+}
+
+.content {
+  margin-top: 2rem;
+}
+
+label {
+  display: block;
+  margin: 1rem 0;
+}
+
+.navigation {
+  margin-top: 2rem;
+}
+
+button {
+  margin: 0.5rem;
+  padding: 0.5rem 1rem;
+}
