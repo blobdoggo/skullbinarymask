@@ -18,7 +18,7 @@ function App() {
 
   return (
     <div className="app">
-      <h1>{steps[step]}</h1>
+      <h1 style={{ backgroundColor: "lightblue", color: "white" }}>{steps[step]}</h1>
       <div className="content">
         {step === 0 && <p>Start Masking! Click next to continue.</p>}
         {step === 1 && (

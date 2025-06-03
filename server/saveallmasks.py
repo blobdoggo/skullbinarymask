@@ -35,8 +35,37 @@ def process_single_image(filename, input_folder, output_folder, model, device):
 
     print(f"Processed {filename} -> {mask_filename}")
 
+def process_image(filename, input_folder, output_folder, model_pred, DEVICE):
+    
+    input_path = os.path.join(input_folder, filename)
+    output_mask_path = os.path.join(output_folder, f"{os.path.splitext(filename)[0]}_mask.jpg")
+
+    try:
+        input_tensor = preprocess(input_path, img_transform).to(DEVICE)
+    except Exception as e:
+        print(f"Skipping {filename}: {e}")
+        return
+
+    with torch.no_grad():
+        predicted_mask_tensor = model_pred(input_tensor)
+
+    predicted_mask = predicted_mask_tensor.squeeze().cpu().numpy()
+
+    # Load original image size to match mask to it
+    original_image = Image.open(input_path)
+    original_size = original_image.size  # (width, height)
+
+    # Resize prediction to original size
+    predicted_mask_resized = cv2.resize(predicted_mask, original_size, interpolation=cv2.INTER_LINEAR)
+    predicted_mask_binary = (predicted_mask_resized > 0.5).astype(np.uint8) * 255
+
+    # Save binary mask
+    cv2.imwrite(output_mask_path, predicted_mask_binary)
+    print(f"Saved mask for {filename} to {output_mask_path}")
+
+
 def process_images(image_files, input_folder, output_folder, model, device):
     for filename in image_files:
-        process_single_image(filename, input_folder, output_folder, model, device)
+        process_image(filename, input_folder, output_folder, model, device)
     print("\nBatch prediction complete.")
 
