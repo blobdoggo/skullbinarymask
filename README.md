@@ -12,8 +12,8 @@ The primary use for this was to create masks for Agisoft Metashape in the produc
 
 I'm sure there are ways to do this that are either bulkier or cleaner but this is my solution. LLMs are too wasteful and this could probably run on a chromebook if you tried hard enough (has not been verified, do not blame me if your chromebook catches fire). My benchmark is a 5 year old AMD ryzen 7 5800H and 16 GB RAM, to generate 20 masks in a minute using the model listed in the repo. The model was trained on a desktop 4070Ti and 32GB RAM and took like 4 hours. 16GB should be enough to train through unettorchnosplit.py but it is dicey and takes forever. 
 
-p.s. I tried using tensor flow and aw hell naw
-p.p.s Please reach out if you need some help with this, I'd be happy to assist :)
+p.s. I tried using tensorflow and........ no. 
+p.p.s Please reach out if you need some help with this, I'd be happy to assist :).
 p.p.p.s Not that I believe anybody is going to bother to sell this, but it was created to be open source as part of a research project so everybody can use it for free!
 
 
