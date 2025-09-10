@@ -2,6 +2,7 @@
 uNET model for creating binary masks of skulls for 3D photogrammetry. The model you want to use is unet_pytorch_split_model.pth
 Train from scratch using unettorchnosplit.py
 Save masks created to a folder using saveallmasks.py
+Use modeltesttorch.py to test the model's prediction on a single image and see if that's what you need. Change the directories in lines 11 and 12 appropriately.
 
 Edit lines 13 and 14 in saveallmasks.py to change the input and output directories respectively. The program is set up to use CUDA if set up but will default to using CPU if not. If you're using an AMD (or other) GPU, feel free to change line 15 to the correct device. Once the virtual environment is set up with the dependencies listed in requirements.txt, you should be good to go! Feel free to add issues in if you face problems with the install and usage of this program.
 
